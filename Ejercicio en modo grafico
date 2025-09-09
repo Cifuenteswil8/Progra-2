@@ -1,0 +1,290 @@
+import javax.swing.*;
+import javax.swing.border.TitledBorder;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class GestorPersonasFrame extends JFrame {
+
+    private JTextField tfId, tfNombre, tfApellido, tfEdad;
+    private JButton btnAgregar, btnEditar, btnBorrar, btnReiniciar, btnCerrar;
+    private JTable tablaPersonas;
+    private DefaultTableModel modelPersonas;
+
+    public GestorPersonasFrame() {
+        setTitle("Gestión de Personas - UMG");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(760, 640);
+        setLocationRelativeTo(null);
+        initUI();
+        wireEvents();
+        listar();
+    }
+
+    private void initUI() {
+        JPanel root = new FondoDegradado();
+        root.setLayout(new BorderLayout(12, 12));
+        root.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        add(root);
+
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setOpaque(false);
+        form.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(230, 230, 230), 2, true),
+                "Ficha de Registro",
+                TitledBorder.LEFT,
+                TitledBorder.TOP,
+                new Font("Segoe UI", Font.BOLD, 16),
+                new Color(245, 245, 245)
+        ));
+
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(8, 8, 8, 8);
+        c.anchor = GridBagConstraints.WEST;
+
+        JLabel lbId = etiqueta("Id:");
+        JLabel lbNombre = etiqueta("Nombre(s):");
+        JLabel lbApellido = etiqueta("Apellidos:");
+        JLabel lbEdad = etiqueta("Edad:");
+
+        tfId = campoTexto();
+        tfNombre = campoTexto();
+        tfApellido = campoTexto();
+        tfEdad = campoTexto();
+
+        c.gridx = 0; c.gridy = 0; form.add(lbId, c);
+        c.gridx = 1;              form.add(tfId, c);
+        c.gridx = 0; c.gridy = 1; form.add(lbNombre, c);
+        c.gridx = 1;              form.add(tfNombre, c);
+        c.gridx = 0; c.gridy = 2; form.add(lbApellido, c);
+        c.gridx = 1;              form.add(tfApellido, c);
+        c.gridx = 0; c.gridy = 3; form.add(lbEdad, c);
+        c.gridx = 1;              form.add(tfEdad, c);
+
+        root.add(form, BorderLayout.NORTH);
+
+        modelPersonas = new DefaultTableModel(new String[]{"ID", "Nombres", "Apellidos", "Edad"}, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        tablaPersonas = new JTable(modelPersonas);
+        tablaPersonas.setRowHeight(26);
+        tablaPersonas.setFillsViewportHeight(true);
+        tablaPersonas.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        tablaPersonas.setBackground(new Color(38, 50, 56));
+        tablaPersonas.setForeground(new Color(238, 238, 238));
+        tablaPersonas.setSelectionBackground(new Color(100, 181, 246));
+        tablaPersonas.setSelectionForeground(Color.BLACK);
+
+        DefaultTableCellRenderer zebra = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                                                           boolean isSelected, boolean hasFocus,
+                                                           int row, int column) {
+                Component comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    comp.setBackground((row % 2 == 0) ? new Color(55, 71, 79) : new Color(38, 50, 56));
+                    comp.setForeground(new Color(236, 239, 241));
+                }
+                return comp;
+            }
+        };
+        tablaPersonas.setDefaultRenderer(Object.class, zebra);
+
+        JScrollPane sp = new JScrollPane(tablaPersonas);
+        sp.setPreferredSize(new Dimension(720, 300));
+        root.add(sp, BorderLayout.CENTER);
+
+        JPanel barra = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 10));
+        barra.setOpaque(false);
+
+        btnAgregar   = boton("➕ Agregar", new Color(67, 160, 71));
+        btnEditar    = boton("✏️ Editar", new Color(251, 192, 45));
+        btnBorrar    = boton("🗑 Borrar", new Color(229, 57, 53));
+        btnReiniciar = boton("↺ Limpiar", new Color(41, 128, 185));
+        btnCerrar    = boton("Salir", new Color(94, 53, 177));
+
+        barra.add(btnAgregar);
+        barra.add(btnEditar);
+        barra.add(btnBorrar);
+        barra.add(btnReiniciar);
+        barra.add(btnCerrar);
+
+        root.add(barra, BorderLayout.SOUTH);
+
+        JLabel firma = new JLabel("Desarrollado por Wilbert Cifuentes • Sistemas • 2025");
+        firma.setHorizontalAlignment(SwingConstants.CENTER);
+        firma.setForeground(new Color(220, 220, 220));
+        firma.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        root.add(firma, BorderLayout.PAGE_END);
+    }
+
+    private JLabel etiqueta(String txt) {
+        JLabel l = new JLabel(txt);
+        l.setForeground(new Color(245, 245, 245));
+        l.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        return l;
+    }
+
+    private JTextField campoTexto() {
+        JTextField t = new JTextField(16);
+        t.setBackground(new Color(33, 33, 33));
+        t.setForeground(new Color(236, 239, 241));
+        t.setCaretColor(new Color(248, 248, 248));
+        t.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        t.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(120, 144, 156), 1, true),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        return t;
+    }
+
+    private JButton boton(String texto, Color base) {
+        JButton b = new JButton(texto);
+        b.setFocusPainted(false);
+        b.setForeground(Color.WHITE);
+        b.setBackground(base);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        b.setBorder(BorderFactory.createEmptyBorder(10, 18, 10, 18));
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        b.setOpaque(true);
+        b.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { b.setBackground(base.brighter()); }
+            @Override public void mouseExited(MouseEvent e)  { b.setBackground(base); }
+        });
+        return b;
+    }
+
+    static class FondoDegradado extends JPanel {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            GradientPaint paint = new GradientPaint(0, 0, new Color(22, 27, 34), getWidth(), getHeight(), new Color(13, 71, 161));
+            g2.setPaint(paint);
+            g2.fillRect(0, 0, getWidth(), getHeight());
+            g2.dispose();
+        }
+    }
+
+    private void wireEvents() {
+        tablaPersonas.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { seleccionarFila(); }
+        });
+        btnAgregar.addActionListener(e -> insertar());
+        btnEditar.addActionListener(e -> modificar());
+        btnBorrar.addActionListener(e -> suprimir());
+        btnReiniciar.addActionListener(e -> limpiarCampos());
+        btnCerrar.addActionListener(e -> dispose());
+        tfId.addActionListener(e -> tfNombre.requestFocus());
+        tfEdad.addActionListener(e -> insertar());
+    }
+
+    private void insertar() {
+        try (Connection cn = ConexionBD.getConnection()) {
+            int id = Integer.parseInt(tfId.getText().trim());
+            int edad = Integer.parseInt(tfEdad.getText().trim());
+            String nombre = tfNombre.getText().trim();
+            String apellido = tfApellido.getText().trim();
+            String sql = "INSERT INTO personas (id, nombres, apellidos, edad) VALUES (?, ?, ?, ?)";
+            try (PreparedStatement ps = cn.prepareStatement(sql)) {
+                ps.setInt(1, id);
+                ps.setString(2, nombre);
+                ps.setString(3, apellido);
+                ps.setInt(4, edad);
+                ps.executeUpdate();
+            }
+            JOptionPane.showMessageDialog(this, "Registro agregado correctamente.");
+            limpiarCampos();
+            listar();
+        } catch (NumberFormatException nfe) {
+            JOptionPane.showMessageDialog(this, "Id y Edad deben ser numéricos.");
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo insertar: " + ex.getMessage());
+        }
+    }
+
+    private void modificar() {
+        try (Connection cn = ConexionBD.getConnection()) {
+            String sql = "UPDATE personas SET nombres = ?, apellidos = ?, edad = ? WHERE id = ?";
+            try (PreparedStatement ps = cn.prepareStatement(sql)) {
+                ps.setString(1, tfNombre.getText().trim());
+                ps.setString(2, tfApellido.getText().trim());
+                ps.setInt(3, Integer.parseInt(tfEdad.getText().trim()));
+                ps.setInt(4, Integer.parseInt(tfId.getText().trim()));
+                int filas = ps.executeUpdate();
+                if (filas > 0) {
+                    JOptionPane.showMessageDialog(this, "Registro actualizado.");
+                    limpiarCampos();
+                    listar();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No existe un registro con ese Id.");
+                }
+            }
+        } catch (NumberFormatException | SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Error al actualizar: " + ex.getMessage());
+        }
+    }
+
+    private void suprimir() {
+        try (Connection cn = ConexionBD.getConnection()) {
+            String sql = "DELETE FROM personas WHERE id = ?";
+            try (PreparedStatement ps = cn.prepareStatement(sql)) {
+                ps.setInt(1, Integer.parseInt(tfId.getText().trim()));
+                int filas = ps.executeUpdate();
+                if (filas > 0) {
+                    JOptionPane.showMessageDialog(this, "Registro eliminado.");
+                    limpiarCampos();
+                    listar();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se encontró el Id especificado.");
+                }
+            }
+        } catch (NumberFormatException | SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Error al eliminar: " + ex.getMessage());
+        }
+    }
+
+    private void listar() {
+        modelPersonas.setRowCount(0);
+        try (Connection cn = ConexionBD.getConnection();
+             PreparedStatement ps = cn.prepareStatement("SELECT id, nombres, apellidos, edad FROM personas ORDER BY id ASC");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                modelPersonas.addRow(new Object[]{
+                        rs.getInt("id"),
+                        rs.getString("nombres"),
+                        rs.getString("apellidos"),
+                        rs.getInt("edad")
+                });
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Error al cargar datos: " + ex.getMessage());
+        }
+    }
+
+    private void seleccionarFila() {
+        int fila = tablaPersonas.getSelectedRow();
+        if (fila >= 0) {
+            tfId.setText(tablaPersonas.getValueAt(fila, 0).toString());
+            tfNombre.setText(tablaPersonas.getValueAt(fila, 1).toString());
+            tfApellido.setText(tablaPersonas.getValueAt(fila, 2).toString());
+            tfEdad.setText(tablaPersonas.getValueAt(fila, 3).toString());
+        }
+    }
+
+    private void limpiarCampos() {
+        tfId.setText("");
+        tfNombre.setText("");
+        tfApellido.setText("");
+        tfEdad.setText("");
+        tfId.requestFocus();
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new GestorPersonasFrame().setVisible(true));
+    }
+}
